@@ -12,6 +12,57 @@ const SIZE_ORDER: Array<keyof typeof SIZES> = ["small", "medium", "large"]
 const MINI_HEIGHT = 40  // 20% of full size
 const MARQUEE_WIDTH = 26
 
+// Get window position and monitor info to determine anchor corner
+function getAnchorCorner(): { anchorRight: boolean; anchorBottom: boolean } {
+  try {
+    // Get window info
+    const [, windowOut] = GLib.spawn_command_line_sync("hyprctl clients -j")
+    const clients = JSON.parse(new TextDecoder().decode(windowOut))
+    const sleeve = clients.find((c: any) => c.class === "io.Astal.sleeve")
+
+    if (!sleeve) return { anchorRight: true, anchorBottom: true }
+
+    const [winX, winY] = sleeve.at
+    const [winW, winH] = sleeve.size
+
+    // Get monitor info
+    const [, monitorOut] = GLib.spawn_command_line_sync("hyprctl monitors -j")
+    const monitors = JSON.parse(new TextDecoder().decode(monitorOut))
+
+    // Find the monitor containing the window
+    const monitor = monitors.find((m: any) => {
+      const mx = m.x, my = m.y, mw = m.width, mh = m.height
+      return winX >= mx && winX < mx + mw && winY >= my && winY < my + mh
+    }) || monitors[0]
+
+    // Calculate window center relative to monitor
+    const winCenterX = winX + winW / 2 - monitor.x
+    const winCenterY = winY + winH / 2 - monitor.y
+    const monCenterX = monitor.width / 2
+    const monCenterY = monitor.height / 2
+
+    return {
+      anchorRight: winCenterX > monCenterX,
+      anchorBottom: winCenterY > monCenterY
+    }
+  } catch {
+    // Default to bottom-right if detection fails
+    return { anchorRight: true, anchorBottom: true }
+  }
+}
+
+// Calculate move offset to keep anchor corner in place after Hyprland's centered resize
+function getAnchorMove(sizeDiff: number, anchor: { anchorRight: boolean; anchorBottom: boolean }): { x: number; y: number } {
+  // Hyprland centers resizes, so we need to counter that based on anchor corner
+  // When growing (positive sizeDiff), Hyprland moves window up-left by halfDiff
+  const halfDiff = sizeDiff / 2
+
+  return {
+    x: anchor.anchorRight ? -halfDiff : halfDiff,
+    y: anchor.anchorBottom ? -halfDiff : halfDiff
+  }
+}
+
 export default function Sleeve(gdkmonitor: Gdk.Monitor) {
   let isMinimized = false
   let currentSize: keyof typeof SIZES = "medium"
@@ -241,6 +292,9 @@ export default function Sleeve(gdkmonitor: Gdk.Monitor) {
   const cycleSize = () => {
     if (isMinimized) return  // Don't resize while minimized
 
+    // Detect anchor corner before resize
+    const anchor = getAnchorCorner()
+
     const currentIndex = SIZE_ORDER.indexOf(currentSize)
     const nextIndex = (currentIndex + 1) % SIZE_ORDER.length
     const newSizeName = SIZE_ORDER[nextIndex]
@@ -256,14 +310,13 @@ export default function Sleeve(gdkmonitor: Gdk.Monitor) {
     miniContent.set_size_request(newSize, MINI_HEIGHT)
     miniHoverOverlay.set_size_request(newSize, MINI_HEIGHT)
 
-    // Adjust position to keep bottom-right corner anchored
+    // Calculate move to keep anchor corner in place
     const sizeDiff = newSize - oldSize
-    const moveX = -sizeDiff  // Move left when growing, right when shrinking
-    const moveY = -sizeDiff  // Move up when growing, down when shrinking
+    const move = getAnchorMove(sizeDiff, anchor)
 
     GLib.timeout_add(GLib.PRIORITY_DEFAULT, 50, () => {
       GLib.spawn_command_line_async(
-        `hyprctl dispatch movewindowpixel ${moveX} ${moveY},class:io.Astal.sleeve`
+        `hyprctl dispatch movewindowpixel ${move.x} ${move.y},class:io.Astal.sleeve`
       )
       return false
     })
@@ -271,6 +324,9 @@ export default function Sleeve(gdkmonitor: Gdk.Monitor) {
 
   // Toggle function
   const toggle = () => {
+    // Detect anchor corner before resize
+    const anchor = getAnchorCorner()
+
     isMinimized = !isMinimized
     const artSize = getArtSize()
     const newHeight = isMinimized ? MINI_HEIGHT : artSize
@@ -295,8 +351,13 @@ export default function Sleeve(gdkmonitor: Gdk.Monitor) {
     miniContent.set_visible(isMinimized)
     miniHoverOverlay.set_visible(isMinimized)
 
-    // Hyprland centers the resize, so we only need to move by half the height difference
-    const moveY = isMinimized ? (heightDiff / 2) : -(heightDiff / 2)
+    // Calculate vertical move to keep anchor edge in place
+    // When minimizing: height shrinks, so sizeDiff is negative
+    // When maximizing: height grows, so sizeDiff is positive
+    const sizeDiff = isMinimized ? -heightDiff : heightDiff
+    const halfDiff = sizeDiff / 2
+    const moveY = anchor.anchorBottom ? -halfDiff : halfDiff
+
     GLib.timeout_add(GLib.PRIORITY_DEFAULT, 50, () => {
       GLib.spawn_command_line_async(
         `hyprctl dispatch movewindowpixel 0 ${moveY},class:io.Astal.sleeve`
