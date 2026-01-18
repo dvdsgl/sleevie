@@ -7,12 +7,14 @@ import GLib from "gi://GLib"
 import { getCacheKey, getCachedArtwork, fetchHighResArtwork } from "./artwork"
 
 const mpris = Mpris.get_default()
-const ART_SIZE = 200
+const SIZES = { small: 150, medium: 200, large: 300 }
+const SIZE_ORDER: Array<keyof typeof SIZES> = ["small", "medium", "large"]
 const MINI_HEIGHT = 40  // 20% of full size
 const MARQUEE_WIDTH = 26
 
 export default function Sleeve(gdkmonitor: Gdk.Monitor) {
   let isMinimized = false
+  let currentSize: keyof typeof SIZES = "medium"
   let currentArt = ""
   let lastTrackKey = ""
 
@@ -90,17 +92,20 @@ export default function Sleeve(gdkmonitor: Gdk.Monitor) {
   })
   win.add_css_class("Sleeve")
 
+  // Helper to get current art size
+  const getArtSize = () => SIZES[currentSize]
+
   // Main container - we'll resize this
   const container = new Gtk.Overlay()
   container.add_css_class("sleeve-container")
-  container.set_size_request(ART_SIZE, ART_SIZE)
+  container.set_size_request(SIZES.medium, SIZES.medium)
 
   // Album art box (base layer) - use JSX for css binding to work
   const artBox = (
     <box
       class="album-art"
-      widthRequest={ART_SIZE}
-      heightRequest={ART_SIZE}
+      widthRequest={SIZES.medium}
+      heightRequest={SIZES.medium}
       css={coverArt((art) => art ? `background-image: url("${art}");` : "")}
     />
   ) as Gtk.Box
@@ -111,12 +116,18 @@ export default function Sleeve(gdkmonitor: Gdk.Monitor) {
   const hoverOverlay = (
     <box
       class="hover-overlay"
-      widthRequest={ART_SIZE}
-      heightRequest={ART_SIZE}
+      widthRequest={SIZES.medium}
+      heightRequest={SIZES.medium}
       halign={Gtk.Align.FILL}
       valign={Gtk.Align.FILL}
+      orientation={Gtk.Orientation.VERTICAL}
     >
-      <box valign={Gtk.Align.START} halign={Gtk.Align.END}>
+      {/* Top row with size toggle (left) and minimize (right) */}
+      <box halign={Gtk.Align.FILL}>
+        <button class="window-btn" onClicked={() => cycleSize()}>
+          <image iconName="view-fullscreen-symbolic" />
+        </button>
+        <box hexpand />
         <button class="window-btn" onClicked={() => toggle()}>
           <image iconName="window-minimize-symbolic" />
         </button>
@@ -128,7 +139,6 @@ export default function Sleeve(gdkmonitor: Gdk.Monitor) {
         valign={Gtk.Align.CENTER}
         spacing={8}
         visible={hasPlayer}
-        vexpand
       >
         <button class="control-btn" onClicked={() => firstPlayer()?.previous()}>
           <image iconName="media-skip-backward-symbolic" />
@@ -166,7 +176,7 @@ export default function Sleeve(gdkmonitor: Gdk.Monitor) {
   const miniContent = (
     <box
       class="mini-content"
-      widthRequest={ART_SIZE}
+      widthRequest={SIZES.medium}
       heightRequest={MINI_HEIGHT}
       halign={Gtk.Align.FILL}
       valign={Gtk.Align.FILL}
@@ -187,7 +197,7 @@ export default function Sleeve(gdkmonitor: Gdk.Monitor) {
   const miniHoverOverlay = (
     <box
       class="mini-hover-overlay"
-      widthRequest={ART_SIZE}
+      widthRequest={SIZES.medium}
       heightRequest={MINI_HEIGHT}
       halign={Gtk.Align.FILL}
       valign={Gtk.Align.FILL}
@@ -227,15 +237,48 @@ export default function Sleeve(gdkmonitor: Gdk.Monitor) {
   container.add_overlay(miniContent)
   container.add_overlay(miniHoverOverlay)
 
+  // Cycle through sizes
+  const cycleSize = () => {
+    if (isMinimized) return  // Don't resize while minimized
+
+    const currentIndex = SIZE_ORDER.indexOf(currentSize)
+    const nextIndex = (currentIndex + 1) % SIZE_ORDER.length
+    const newSizeName = SIZE_ORDER[nextIndex]
+    const oldSize = SIZES[currentSize]
+    const newSize = SIZES[newSizeName]
+    currentSize = newSizeName
+
+    // Resize container and art
+    container.set_size_request(newSize, newSize)
+    ;(artBox as Gtk.Widget).set_size_request(newSize, newSize)
+    hoverOverlay.set_size_request(newSize, newSize)
+    trackOverlay.set_size_request(newSize, -1)
+    miniContent.set_size_request(newSize, MINI_HEIGHT)
+    miniHoverOverlay.set_size_request(newSize, MINI_HEIGHT)
+
+    // Adjust position to keep bottom-right corner anchored
+    const sizeDiff = newSize - oldSize
+    const moveX = -sizeDiff  // Move left when growing, right when shrinking
+    const moveY = -sizeDiff  // Move up when growing, down when shrinking
+
+    GLib.timeout_add(GLib.PRIORITY_DEFAULT, 50, () => {
+      GLib.spawn_command_line_async(
+        `hyprctl dispatch movewindowpixel ${moveX} ${moveY},class:io.Astal.sleeve`
+      )
+      return false
+    })
+  }
+
   // Toggle function
   const toggle = () => {
     isMinimized = !isMinimized
-    const newHeight = isMinimized ? MINI_HEIGHT : ART_SIZE
-    const heightDiff = ART_SIZE - MINI_HEIGHT
+    const artSize = getArtSize()
+    const newHeight = isMinimized ? MINI_HEIGHT : artSize
+    const heightDiff = artSize - MINI_HEIGHT
 
     // Resize container and art
-    container.set_size_request(ART_SIZE, newHeight)
-    ;(artBox as Gtk.Widget).set_size_request(ART_SIZE, newHeight)
+    container.set_size_request(artSize, newHeight)
+    ;(artBox as Gtk.Widget).set_size_request(artSize, newHeight)
 
     // Toggle CSS classes
     if (isMinimized) {
