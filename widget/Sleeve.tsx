@@ -12,15 +12,15 @@ const SIZE_ORDER: Array<keyof typeof SIZES> = ["small", "medium", "large"]
 const MINI_HEIGHT = 40  // 20% of full size
 const MARQUEE_WIDTH = 26
 
-// Get window position and monitor info to determine anchor corner
-function getAnchorCorner(): { anchorRight: boolean; anchorBottom: boolean } {
+// Get window info including position, size, and which corner to anchor
+function getWindowInfo(): { x: number; y: number; w: number; h: number; anchorRight: boolean; anchorBottom: boolean } | null {
   try {
     // Get window info
     const [, windowOut] = GLib.spawn_command_line_sync("hyprctl clients -j")
     const clients = JSON.parse(new TextDecoder().decode(windowOut))
     const sleeve = clients.find((c: any) => c.class === "io.Astal.sleeve")
 
-    if (!sleeve) return { anchorRight: true, anchorBottom: true }
+    if (!sleeve) return null
 
     const [winX, winY] = sleeve.at
     const [winW, winH] = sleeve.size
@@ -42,25 +42,33 @@ function getAnchorCorner(): { anchorRight: boolean; anchorBottom: boolean } {
     const monCenterY = monitor.height / 2
 
     return {
+      x: winX,
+      y: winY,
+      w: winW,
+      h: winH,
       anchorRight: winCenterX > monCenterX,
       anchorBottom: winCenterY > monCenterY
     }
   } catch {
-    // Default to bottom-right if detection fails
-    return { anchorRight: true, anchorBottom: true }
+    return null
   }
 }
 
-// Calculate move offset to keep anchor corner in place after Hyprland's centered resize
-function getAnchorMove(sizeDiff: number, anchor: { anchorRight: boolean; anchorBottom: boolean }): { x: number; y: number } {
-  // Hyprland centers resizes, so we need to counter that based on anchor corner
-  // When growing (positive sizeDiff), Hyprland moves window up-left by halfDiff
-  const halfDiff = sizeDiff / 2
+// Calculate target position to keep anchor corner in place after resize
+function calcAnchoredPosition(
+  oldX: number, oldY: number, oldW: number, oldH: number,
+  newW: number, newH: number,
+  anchorRight: boolean, anchorBottom: boolean
+): { x: number; y: number } {
+  // Calculate where anchor corner currently is
+  const anchorX = anchorRight ? oldX + oldW : oldX
+  const anchorY = anchorBottom ? oldY + oldH : oldY
 
-  return {
-    x: anchor.anchorRight ? -halfDiff : halfDiff,
-    y: anchor.anchorBottom ? -halfDiff : halfDiff
-  }
+  // Calculate new position to keep anchor corner in place
+  const newX = anchorRight ? anchorX - newW : anchorX
+  const newY = anchorBottom ? anchorY - newH : anchorY
+
+  return { x: newX, y: newY }
 }
 
 export default function Sleeve(gdkmonitor: Gdk.Monitor) {
@@ -173,14 +181,14 @@ export default function Sleeve(gdkmonitor: Gdk.Monitor) {
       valign={Gtk.Align.FILL}
       orientation={Gtk.Orientation.VERTICAL}
     >
-      {/* Top row with size toggle (left) and minimize (right) */}
+      {/* Top row with minimize (left) and size toggle (right) */}
       <box halign={Gtk.Align.FILL}>
-        <button class="window-btn" onClicked={() => cycleSize()}>
-          <image iconName="view-fullscreen-symbolic" />
-        </button>
-        <box hexpand />
         <button class="window-btn" onClicked={() => toggle()}>
           <image iconName="window-minimize-symbolic" />
+        </button>
+        <box hexpand />
+        <button class="window-btn" onClicked={() => cycleSize()}>
+          <image iconName="view-fullscreen-symbolic" />
         </button>
       </box>
       <box vexpand />
@@ -292,17 +300,17 @@ export default function Sleeve(gdkmonitor: Gdk.Monitor) {
   const cycleSize = () => {
     if (isMinimized) return  // Don't resize while minimized
 
-    // Detect anchor corner before resize
-    const anchor = getAnchorCorner()
+    // Get window info before resize
+    const infoBefore = getWindowInfo()
+    if (!infoBefore) return
 
     const currentIndex = SIZE_ORDER.indexOf(currentSize)
     const nextIndex = (currentIndex + 1) % SIZE_ORDER.length
     const newSizeName = SIZE_ORDER[nextIndex]
-    const oldSize = SIZES[currentSize]
     const newSize = SIZES[newSizeName]
     currentSize = newSizeName
 
-    // Resize container and art
+    // Resize first
     container.set_size_request(newSize, newSize)
     ;(artBox as Gtk.Widget).set_size_request(newSize, newSize)
     hoverOverlay.set_size_request(newSize, newSize)
@@ -310,13 +318,20 @@ export default function Sleeve(gdkmonitor: Gdk.Monitor) {
     miniContent.set_size_request(newSize, MINI_HEIGHT)
     miniHoverOverlay.set_size_request(newSize, MINI_HEIGHT)
 
-    // Calculate move to keep anchor corner in place
-    const sizeDiff = newSize - oldSize
-    const move = getAnchorMove(sizeDiff, anchor)
+    // After delay, get actual size and calculate correct position
+    GLib.timeout_add(GLib.PRIORITY_DEFAULT, 100, () => {
+      const infoAfter = getWindowInfo()
+      if (!infoAfter) return false
 
-    GLib.timeout_add(GLib.PRIORITY_DEFAULT, 50, () => {
+      // Use actual size after resize (in case of minimum size constraints)
+      const target = calcAnchoredPosition(
+        infoBefore.x, infoBefore.y, infoBefore.w, infoBefore.h,
+        infoAfter.w, infoAfter.h,
+        infoBefore.anchorRight, infoBefore.anchorBottom
+      )
+
       GLib.spawn_command_line_async(
-        `hyprctl dispatch movewindowpixel ${move.x} ${move.y},class:io.Astal.sleeve`
+        `hyprctl dispatch movewindowpixel exact ${target.x} ${target.y},class:io.Astal.sleeve`
       )
       return false
     })
@@ -324,15 +339,15 @@ export default function Sleeve(gdkmonitor: Gdk.Monitor) {
 
   // Toggle function
   const toggle = () => {
-    // Detect anchor corner before resize
-    const anchor = getAnchorCorner()
+    // Get window info before resize
+    const infoBefore = getWindowInfo()
+    if (!infoBefore) return
 
     isMinimized = !isMinimized
     const artSize = getArtSize()
     const newHeight = isMinimized ? MINI_HEIGHT : artSize
-    const heightDiff = artSize - MINI_HEIGHT
 
-    // Resize container and art
+    // Resize first
     container.set_size_request(artSize, newHeight)
     ;(artBox as Gtk.Widget).set_size_request(artSize, newHeight)
 
@@ -351,16 +366,20 @@ export default function Sleeve(gdkmonitor: Gdk.Monitor) {
     miniContent.set_visible(isMinimized)
     miniHoverOverlay.set_visible(isMinimized)
 
-    // Calculate vertical move to keep anchor edge in place
-    // When minimizing: height shrinks, so sizeDiff is negative
-    // When maximizing: height grows, so sizeDiff is positive
-    const sizeDiff = isMinimized ? -heightDiff : heightDiff
-    const halfDiff = sizeDiff / 2
-    const moveY = anchor.anchorBottom ? -halfDiff : halfDiff
+    // After delay, get actual size and calculate correct position
+    GLib.timeout_add(GLib.PRIORITY_DEFAULT, 100, () => {
+      const infoAfter = getWindowInfo()
+      if (!infoAfter) return false
 
-    GLib.timeout_add(GLib.PRIORITY_DEFAULT, 50, () => {
+      // Use actual size after resize (in case of minimum size constraints)
+      const target = calcAnchoredPosition(
+        infoBefore.x, infoBefore.y, infoBefore.w, infoBefore.h,
+        infoAfter.w, infoAfter.h,
+        infoBefore.anchorRight, infoBefore.anchorBottom
+      )
+
       GLib.spawn_command_line_async(
-        `hyprctl dispatch movewindowpixel 0 ${moveY},class:io.Astal.sleeve`
+        `hyprctl dispatch movewindowpixel exact ${target.x} ${target.y},class:io.Astal.sleeve`
       )
       return false
     })

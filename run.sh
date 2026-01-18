@@ -17,8 +17,13 @@ AGS_PID=$!
 for i in {1..50}; do
   if hyprctl clients | grep -q "io.Astal.sleeve"; then
     sleep 0.1  # Small extra delay for window to be fully ready
+    # Hide window while positioning
+    hyprctl setprop class:io.Astal.sleeve alpha 0 2>/dev/null
     hyprctl dispatch pin class:io.Astal.sleeve 2>/dev/null
     hyprctl dispatch movewindowpixel exact 1220 680,class:io.Astal.sleeve 2>/dev/null
+    sleep 0.05
+    # Reveal window in final position
+    hyprctl setprop class:io.Astal.sleeve alpha 1 2>/dev/null
     break
   fi
   sleep 0.1
