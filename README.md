@@ -4,7 +4,7 @@ A floating "now playing" widget for Linux, inspired by [Sleeve](https://replay.s
 
 Built with [AGS](https://github.com/Aylur/ags) (Aylur's GTK Shell) using GTK4 and the Astal libraries.
 
-![Sleevie Screenshot](screenshot.png)
+![Sleevie Screenshot](media/screenshot.png)
 
 ## Features
 
