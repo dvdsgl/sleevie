@@ -3,8 +3,8 @@ import { Gtk, Gdk } from "ags/gtk4"
 import { createBinding } from "ags"
 import { createPoll } from "ags/time"
 import Mpris from "gi://AstalMpris"
-import GObject from "gi://GObject"
 import GLib from "gi://GLib"
+import { getCacheKey, getCachedArtwork, fetchHighResArtwork } from "./artwork"
 
 const mpris = Mpris.get_default()
 const ART_SIZE = 200
@@ -13,12 +13,49 @@ const MARQUEE_WIDTH = 26
 
 export default function Sleeve(gdkmonitor: Gdk.Monitor) {
   let isMinimized = false
+  let currentArt = ""
+  let lastTrackKey = ""
 
   const players = createBinding(mpris, "players")
   const firstPlayer = () => mpris.get_players()[0]
 
+  // Callback to update artwork when high-res version is found
+  const updateArtwork = (path: string) => {
+    currentArt = `file://${path}`
+  }
+
   const coverArt = createPoll("", 1000, () => {
-    const art = mpris.get_players()[0]?.coverArt
+    const player = mpris.get_players()[0]
+    if (!player) return ""
+
+    const artist = player.artist || ""
+    const album = player.album || ""
+    const trackKey = getCacheKey(artist, album)
+
+    // Track changed - try to fetch high-res
+    if (trackKey !== lastTrackKey && artist && album) {
+      lastTrackKey = trackKey
+
+      // Check cache first
+      const cached = getCachedArtwork(artist, album)
+      if (cached) {
+        currentArt = `file://${cached}`
+      } else {
+        // Start with MPRIS art, fetch high-res in background
+        const mprisArt = player.coverArt
+        if (mprisArt) {
+          currentArt = mprisArt.startsWith("/") ? `file://${mprisArt}` : mprisArt
+        }
+        // Fetch high-res in background
+        fetchHighResArtwork(artist, album, updateArtwork)
+      }
+    }
+
+    // Return current art (may be updated by callback)
+    if (currentArt) return currentArt
+
+    // Fallback to MPRIS art
+    const art = player.coverArt
     if (!art) return ""
     if (art.startsWith("/")) return `file://${art}`
     return art
