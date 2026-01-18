@@ -155,12 +155,20 @@ export default function Sleeve(gdkmonitor: Gdk.Monitor) {
       halign={Gtk.Align.FILL}
       valign={Gtk.Align.FILL}
     >
+      {/* Unminimize button on left */}
+      <box valign={Gtk.Align.CENTER} halign={Gtk.Align.START}>
+        <button class="window-btn" onClicked={() => toggle()}>
+          <label label="□" />
+        </button>
+      </box>
+      {/* Controls on right */}
       <box
         class="mini-controls"
-        halign={Gtk.Align.CENTER}
+        halign={Gtk.Align.END}
         valign={Gtk.Align.CENTER}
         spacing={4}
         visible={hasPlayer}
+        hexpand
       >
         <button class="control-btn" onClicked={() => firstPlayer()?.previous()}>
           <label label="◀◀" />
@@ -170,11 +178,6 @@ export default function Sleeve(gdkmonitor: Gdk.Monitor) {
         </button>
         <button class="control-btn" onClicked={() => firstPlayer()?.next()}>
           <label label="▶▶" />
-        </button>
-      </box>
-      <box valign={Gtk.Align.CENTER} halign={Gtk.Align.END}>
-        <button class="window-btn" onClicked={() => toggle()}>
-          <label label="□" />
         </button>
       </box>
     </box>
