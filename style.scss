@@ -86,6 +86,19 @@ window.Sleeve > * {
   color: $fg-color;
 }
 
+// Icon sizing
+.control-btn image {
+  -gtk-icon-size: 16px;
+}
+
+.play-btn image {
+  -gtk-icon-size: 24px;
+}
+
+.window-btn image {
+  -gtk-icon-size: 12px;
+}
+
 // Window control buttons (min/max)
 .window-btn {
   min-width: 20px;

@@ -81,7 +81,7 @@ export default function Sleeve(gdkmonitor: Gdk.Monitor) {
     >
       <box valign={Gtk.Align.START} halign={Gtk.Align.END}>
         <button class="window-btn" onClicked={() => toggle()}>
-          <label label="─" />
+          <image iconName="window-minimize-symbolic" />
         </button>
       </box>
       <box vexpand />
@@ -94,13 +94,13 @@ export default function Sleeve(gdkmonitor: Gdk.Monitor) {
         vexpand
       >
         <button class="control-btn" onClicked={() => firstPlayer()?.previous()}>
-          <label label="◀◀" />
+          <image iconName="media-skip-backward-symbolic" />
         </button>
         <button class="control-btn play-btn" onClicked={() => firstPlayer()?.play_pause()}>
-          <label label={isPlaying((p) => p ? "❚❚" : "▶")} />
+          <image iconName={isPlaying((p) => p ? "media-playback-pause-symbolic" : "media-playback-start-symbolic")} />
         </button>
         <button class="control-btn" onClicked={() => firstPlayer()?.next()}>
-          <label label="▶▶" />
+          <image iconName="media-skip-forward-symbolic" />
         </button>
       </box>
       <box vexpand />
@@ -158,7 +158,7 @@ export default function Sleeve(gdkmonitor: Gdk.Monitor) {
       {/* Unminimize button on left */}
       <box valign={Gtk.Align.CENTER} halign={Gtk.Align.START}>
         <button class="window-btn" onClicked={() => toggle()}>
-          <label label="□" />
+          <image iconName="window-maximize-symbolic" />
         </button>
       </box>
       {/* Controls on right */}
@@ -171,13 +171,13 @@ export default function Sleeve(gdkmonitor: Gdk.Monitor) {
         hexpand
       >
         <button class="control-btn" onClicked={() => firstPlayer()?.previous()}>
-          <label label="◀◀" />
+          <image iconName="media-skip-backward-symbolic" />
         </button>
         <button class="control-btn play-btn" onClicked={() => firstPlayer()?.play_pause()}>
-          <label label={isPlaying((p) => p ? "❚❚" : "▶")} />
+          <image iconName={isPlaying((p) => p ? "media-playback-pause-symbolic" : "media-playback-start-symbolic")} />
         </button>
         <button class="control-btn" onClicked={() => firstPlayer()?.next()}>
-          <label label="▶▶" />
+          <image iconName="media-skip-forward-symbolic" />
         </button>
       </box>
     </box>
