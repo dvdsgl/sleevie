@@ -129,16 +129,30 @@ export default function Sleeve(gdkmonitor: Gdk.Monitor) {
 
   const hasPlayer = players((list) => list.length > 0)
 
-  let scrollPos = 0
-  const marqueeText = createPoll("", 250, () => {
-    const t = mpris.get_players()[0]?.title || ""
-    const a = mpris.get_players()[0]?.artist || ""
-    const full = a ? `${t} - ${a}` : t
-    if (full.length <= MARQUEE_WIDTH) return full
+  let scrollPosTitle = 0
+  let scrollPosArtist = 0
 
+  const titleText = createPoll("", 250, () => {
+    const player = mpris.get_players()[0]
+    if (!player) return ""
+    const t = player.title || ""
+    if (t.length <= MARQUEE_WIDTH) return t
+    const padded = t + "   ●   "
+    scrollPosTitle = (scrollPosTitle + 1) % padded.length
+    return padded.slice(scrollPosTitle) + padded.slice(0, scrollPosTitle)
+  })
+
+  const artistAlbumText = createPoll("", 250, () => {
+    const player = mpris.get_players()[0]
+    if (!player) return ""
+    const a = player.artist || ""
+    const al = player.album || ""
+    let full = a
+    if (al) full += full ? ` • ${al}` : al
+    if (full.length <= MARQUEE_WIDTH) return full
     const padded = full + "   ●   "
-    scrollPos = (scrollPos + 1) % padded.length
-    return padded.slice(scrollPos) + padded.slice(0, scrollPos)
+    scrollPosArtist = (scrollPosArtist + 1) % padded.length
+    return padded.slice(scrollPosArtist) + padded.slice(0, scrollPosArtist)
   })
 
   // Create window
@@ -181,14 +195,16 @@ export default function Sleeve(gdkmonitor: Gdk.Monitor) {
       valign={Gtk.Align.FILL}
       orientation={Gtk.Orientation.VERTICAL}
     >
-      {/* Top row with minimize (left) and size toggle (right) */}
-      <box halign={Gtk.Align.FILL}>
-        <button class="window-btn" onClicked={() => toggle()}>
-          <image iconName="window-minimize-symbolic" />
+      {/* Window controls grouped on left: close, size, minimize */}
+      <box halign={Gtk.Align.START} spacing={2}>
+        <button class="window-btn" onClicked={() => app.quit()}>
+          <image iconName="window-close-symbolic" />
         </button>
-        <box hexpand />
         <button class="window-btn" onClicked={() => cycleSize()}>
           <image iconName="view-fullscreen-symbolic" />
+        </button>
+        <button class="window-btn" onClicked={() => toggle()}>
+          <image iconName="window-minimize-symbolic" />
         </button>
       </box>
       <box vexpand />
@@ -220,10 +236,16 @@ export default function Sleeve(gdkmonitor: Gdk.Monitor) {
       valign={Gtk.Align.END}
       halign={Gtk.Align.FILL}
     >
-      <box class="track-info" visible={hasPlayer} halign={Gtk.Align.START}>
+      <box class="track-info" visible={hasPlayer} halign={Gtk.Align.START} orientation={Gtk.Orientation.VERTICAL}>
         <label
-          class="track-title marquee"
-          label={marqueeText}
+          class="track-title"
+          label={titleText}
+          maxWidthChars={MARQUEE_WIDTH}
+          xalign={0}
+        />
+        <label
+          class="track-artist"
+          label={artistAlbumText}
           maxWidthChars={MARQUEE_WIDTH}
           xalign={0}
         />
@@ -242,8 +264,8 @@ export default function Sleeve(gdkmonitor: Gdk.Monitor) {
     >
       <box class="mini-text" halign={Gtk.Align.START} valign={Gtk.Align.CENTER} hexpand>
         <label
-          class="track-title marquee"
-          label={marqueeText}
+          class="track-title"
+          label={titleText}
           maxWidthChars={20}
           xalign={0}
         />
@@ -386,6 +408,39 @@ export default function Sleeve(gdkmonitor: Gdk.Monitor) {
   }
 
   win.set_child(container)
+
+  // Keyboard shortcuts
+  const keyController = new Gtk.EventControllerKey()
+  keyController.connect("key-pressed", (_: any, keyval: number) => {
+    const key = Gdk.keyval_name(keyval)
+    switch (key) {
+      case "space":
+      case "k":
+        firstPlayer()?.play_pause()
+        return true
+      case "Left":
+      case "j":
+        firstPlayer()?.previous()
+        return true
+      case "Right":
+      case "l":
+        firstPlayer()?.next()
+        return true
+      case "q":
+      case "Escape":
+        app.quit()
+        return true
+      case "m":
+        toggle()
+        return true
+      case "s":
+        cycleSize()
+        return true
+    }
+    return false
+  })
+  win.add_controller(keyController)
+
   win.present()
 
   return win

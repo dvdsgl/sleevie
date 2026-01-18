@@ -10,12 +10,14 @@ Built with [AGS](https://github.com/Aylur/ags) (Aylur's GTK Shell) using GTK4 an
 
 - Floating album art display with rounded corners
 - Draggable window (Super + left mouse button)
+- Three size options: small (150px), medium (200px), large (300px)
 - Minimize to a compact bar, maximize back to full artwork
-- Hover to reveal playback controls (play/pause, next, previous)
-- Hover to reveal track title and artist with marquee scrolling
+- Smart corner anchoring - stays pinned to nearest corner when resizing
+- Hover to reveal playback controls and window controls
+- Two-line track info: song title (bold) and artist • album
+- Keyboard shortcuts for all controls
 - Works with any MPRIS-compatible player (Spotify, browsers, VLC, etc.)
 - Pinned to all workspaces
-- Bottom edge stays anchored when minimizing/maximizing
 
 ## Requirements
 
@@ -47,8 +49,20 @@ windowrulev2 = float, class:io.Astal.sleevie
 windowrulev2 = noborder, class:io.Astal.sleevie
 windowrulev2 = noshadow, class:io.Astal.sleevie
 windowrulev2 = pin, class:io.Astal.sleevie
-windowrulev2 = nofocus, class:io.Astal.sleevie
 ```
+
+## Keyboard Shortcuts
+
+When the widget is focused:
+
+| Key | Action |
+|-----|--------|
+| `Space` / `K` | Play/Pause |
+| `Left` / `J` | Previous track |
+| `Right` / `L` | Next track |
+| `M` | Minimize/Maximize |
+| `S` | Cycle size (small → medium → large) |
+| `Q` / `Escape` | Quit |
 
 ## Customization
 

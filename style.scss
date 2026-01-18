@@ -59,8 +59,15 @@ window.Sleeve > * {
 
 .track-title {
   font-size: 11px;
-  font-weight: 500;
+  font-weight: 600;
   color: $fg-color;
+  font-family: monospace;
+}
+
+.track-artist {
+  font-size: 10px;
+  font-weight: 400;
+  color: $fg-dim;
   font-family: monospace;
 }
 
@@ -99,12 +106,12 @@ window.Sleeve > * {
   -gtk-icon-size: 12px;
 }
 
-// Window control buttons (min/max)
+// Window control buttons (close/size/min)
 .window-btn {
   min-width: 20px;
   min-height: 20px;
   padding: 2px 6px;
-  margin: 4px;
+  margin: 4px 2px;
   border-radius: 4px;
   background: rgba(255, 255, 255, 0.2);
   color: $fg-color;
