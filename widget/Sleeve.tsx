@@ -45,7 +45,7 @@ export default function Sleeve(gdkmonitor: Gdk.Monitor) {
 
   // Create window
   const win = new Gtk.Window({
-    title: "sleeve",
+    title: "sleevie",
     name: "sleeve",
     decorated: false,
     resizable: false,
