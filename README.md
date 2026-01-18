@@ -43,11 +43,11 @@ ags run .
 Add these window rules to your Hyprland config for the best experience:
 
 ```conf
-windowrulev2 = float, class:io.Astal.sleeve
-windowrulev2 = noborder, class:io.Astal.sleeve
-windowrulev2 = noshadow, class:io.Astal.sleeve
-windowrulev2 = pin, class:io.Astal.sleeve
-windowrulev2 = nofocus, class:io.Astal.sleeve
+windowrulev2 = float, class:io.Astal.sleevie
+windowrulev2 = noborder, class:io.Astal.sleevie
+windowrulev2 = noshadow, class:io.Astal.sleevie
+windowrulev2 = pin, class:io.Astal.sleevie
+windowrulev2 = nofocus, class:io.Astal.sleevie
 ```
 
 ## Customization

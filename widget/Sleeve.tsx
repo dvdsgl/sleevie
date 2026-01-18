@@ -18,12 +18,12 @@ function getWindowInfo(): { x: number; y: number; w: number; h: number; anchorRi
     // Get window info
     const [, windowOut] = GLib.spawn_command_line_sync("hyprctl clients -j")
     const clients = JSON.parse(new TextDecoder().decode(windowOut))
-    const sleeve = clients.find((c: any) => c.class === "io.Astal.sleeve")
+    const sleevie = clients.find((c: any) => c.class === "io.Astal.sleevie")
 
-    if (!sleeve) return null
+    if (!sleevie) return null
 
-    const [winX, winY] = sleeve.at
-    const [winW, winH] = sleeve.size
+    const [winX, winY] = sleevie.at
+    const [winW, winH] = sleevie.size
 
     // Get monitor info
     const [, monitorOut] = GLib.spawn_command_line_sync("hyprctl monitors -j")
@@ -144,7 +144,7 @@ export default function Sleeve(gdkmonitor: Gdk.Monitor) {
   // Create window
   const win = new Gtk.Window({
     title: "sleevie",
-    name: "sleeve",
+    name: "sleevie",
     decorated: false,
     resizable: false,
     application: app,
@@ -156,7 +156,7 @@ export default function Sleeve(gdkmonitor: Gdk.Monitor) {
 
   // Main container - we'll resize this
   const container = new Gtk.Overlay()
-  container.add_css_class("sleeve-container")
+  container.add_css_class("sleevie-container")
   container.set_size_request(SIZES.medium, SIZES.medium)
 
   // Album art box (base layer) - use JSX for css binding to work
@@ -331,7 +331,7 @@ export default function Sleeve(gdkmonitor: Gdk.Monitor) {
       )
 
       GLib.spawn_command_line_async(
-        `hyprctl dispatch movewindowpixel exact ${target.x} ${target.y},class:io.Astal.sleeve`
+        `hyprctl dispatch movewindowpixel exact ${target.x} ${target.y},class:io.Astal.sleevie`
       )
       return false
     })
@@ -379,7 +379,7 @@ export default function Sleeve(gdkmonitor: Gdk.Monitor) {
       )
 
       GLib.spawn_command_line_async(
-        `hyprctl dispatch movewindowpixel exact ${target.x} ${target.y},class:io.Astal.sleeve`
+        `hyprctl dispatch movewindowpixel exact ${target.x} ${target.y},class:io.Astal.sleevie`
       )
       return false
     })

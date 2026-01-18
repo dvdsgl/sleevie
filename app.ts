@@ -4,7 +4,7 @@ import Sleeve from "./widget/Sleeve"
 
 app.start({
   css: style,
-  instanceName: "sleeve",
+  instanceName: "sleevie",
   main() {
     // Only show on primary monitor
     const monitors = app.get_monitors()

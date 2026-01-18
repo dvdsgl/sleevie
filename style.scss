@@ -15,7 +15,7 @@ window.Sleeve > * {
   background: transparent;
 }
 
-.sleeve-container {
+.sleevie-container {
   background: transparent;
   border-radius: $border-radius;
 }
@@ -48,8 +48,8 @@ window.Sleeve > * {
   padding: 12px;
 }
 
-.sleeve-container:hover .hover-overlay,
-.sleeve-container:hover .track-info-overlay {
+.sleevie-container:hover .hover-overlay,
+.sleevie-container:hover .track-info-overlay {
   opacity: 1;
 }
 
@@ -116,7 +116,7 @@ window.Sleeve > * {
 }
 
 // Minimized mode
-.sleeve-container.mini {
+.sleevie-container.mini {
   border-radius: $border-radius;
 }
 
@@ -145,11 +145,11 @@ window.Sleeve > * {
   transition: opacity 200ms ease;
 }
 
-.sleeve-container.mini:hover .mini-hover-overlay {
+.sleevie-container.mini:hover .mini-hover-overlay {
   opacity: 1;
 }
 
-.sleeve-container.mini:hover .mini-content {
+.sleevie-container.mini:hover .mini-content {
   opacity: 0;
 }
 
